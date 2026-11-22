@@ -1,47 +1,62 @@
 # Mitra — strona wizytówka
 
 Statyczna strona (HTML + CSS + odrobina JS) dla marki ręcznie robionych świec sojowych.
-Gotowa do publikacji na **Cloudflare Pages**, z pocztą na **OVHcloud**.
+Hostowana na **Cloudflare Workers (static assets)**, poczta na **OVHcloud**.
+
+Repozytorium: **https://github.com/MarcinCho/mitra** (prywatne, branch `main`).
 
 ---
 
-## Co jest w środku
+## Jak to działa
+
+- Cloudflare buduje repo i uruchamia `npx wrangler deploy`.
+- Wrangler publikuje katalog **`public/`** jako statyczne assety Workera `mitra`.
+- `public/_headers` ustawia nagłówki bezpieczeństwa (CSP),
+  `public/_redirects` — przekierowanie `/kontakt`, a `public/404.html` — stronę błędu.
+- Nie ma żadnego kodu Workera, więc requesty do statycznych plików nie zużywają
+  limitów wywołań Workera.
+
+## Struktura
 
 ```
-index.html                  strona główna (one-page)
-dziekujemy.html             podziękowanie po wysłaniu formularza
-polityka-prywatnosci.html   szablon polityki prywatności (uzupełnij!)
-404.html                    strona błędu
-_headers                    nagłówki bezpieczeństwa (Cloudflare Pages)
-_redirects                  przekierowanie /kontakt → /#kontakt
-robots.txt
-manifest.webmanifest        dane aplikacji (ikona, nazwa, kolor)
-assets/
-  css/fonts.css             self-hostowane fonty (Cormorant Garamond + Jost)
-  css/style.css             cały wygląd
-  js/main.js                menu, animacje, formularz
-  fonts/                    pliki .woff2 (bez CDN Google)
-  img/logo.webp             logo na hero (1100 px)
-  img/og.jpg                obrazek do udostępniania 1200×630
-  img/favicon.svg           ikona strony
-  img/icon-*.png            ikony aplikacji
-design/logo-source.jpeg     oryginał logo (nie jest częścią strony)
+public/                     ← tylko to trafia na stronę
+  index.html                strona główna (one-page)
+  dziekujemy.html           podziękowanie po formularzu
+  polityka-prywatnosci.html szablon RODO (uzupełnij!)
+  404.html                  strona błędu
+  _headers                  CSP i nagłówki bezpieczeństwa
+  _redirects                /kontakt → /#kontakt
+  robots.txt
+  manifest.webmanifest      dane aplikacji (ikona, nazwa, kolor)
+  assets/
+    css/fonts.css           self-hostowane fonty
+    css/style.css           cały wygląd
+    js/main.js              menu, animacje, formularz
+    fonts/                  pliki .woff2 (bez CDN Google)
+    img/logo.webp           logo na hero
+    img/og.jpg              obrazek do udostępniania 1200×630
+    img/favicon.svg         ikona strony
+    img/icon-*.png          ikony aplikacji
+wrangler.jsonc              konfiguracja Workera (assets → ./public)
+package.json                wersja Wranglera i skrypty
+design/logo-source.jpeg     oryginał logo (nie trafia na stronę)
+README.md
 ```
 
 Zdjęcia produktów i galerii to **placeholdery**. Wystarczy wrzucić pliki o właściwych
-nazwach do `assets/img/` i odświeżyć stronę — podmienią się automatycznie:
+nazwach do `public/assets/img/` — podmienią się automatycznie:
 
 - `produkt-1.jpg`, `produkt-2.jpg`, `produkt-3.jpg`
 - `galeria-1.jpg` … `galeria-4.jpg`
 
-Jeśli nie ma pliku, pokazuje się elegancki rysunek świecy (SVG), więc strona nie wygląda
-na zepsutą.
+Jeśli pliku nie ma, pokazuje się rysunek świecy (SVG), więc strona nie wygląda na
+zepsutą. W konsoli będą wtedy 404 na tych obrazkach — to normalne do czasu dodania zdjęć.
 
 ---
 
 ## 1. Podmień placeholdery (5 minut)
 
-W plikach `index.html`, `dziekujemy.html`, `404.html`, `polityka-prywatnosci.html`:
+W plikach w `public/`:
 
 | Znajdź | Zamień na |
 |---|---|
@@ -52,8 +67,8 @@ W plikach `index.html`, `dziekujemy.html`, `404.html`, `polityka-prywatnosci.htm
 | nazwy i opisy produktów, pojemności, czasy palenia | Twoja oferta |
 | „1–2 dni roboczych”, „cała Polska”, formy wysyłki | Twoje realia |
 
-W `index.html` są też zakomentowane dane `schema.org` (SEO lokalne) — uzupełnij
-i odkomentuj, jeśli chcesz.
+W `public/index.html` są też zakomentowane dane `schema.org` (SEO lokalne) —
+uzupełnij i odkomentuj, jeśli chcesz.
 
 **Ważne:** teksty o wysyłce, terminach i zapachach to propozycje. Dopasuj je do tego,
 jak naprawdę działasz.
@@ -62,14 +77,14 @@ jak naprawdę działasz.
 
 ## 2. Formularz kontaktowy
 
-Domyślnie formularz **działa bez żadnej konfiguracji** — po kliknięciu „Wyślij” otwiera
+Domyślnie formularz **działa bez konfiguracji** — po kliknięciu „Wyślij” otwiera
 program pocztowy z gotową treścią (fallback `mailto:`).
 
 Żeby wysyłał maile w tle, bez otwierania klienta poczty:
 
 1. Wejdź na [web3forms.com](https://web3forms.com) i podaj swój adres e-mail.
 2. Skopiuj **Access Key** z maila.
-3. W `index.html` znajdź:
+3. W `public/index.html` znajdź:
 
    ```html
    <input type="hidden" name="access_key" value="WKLEJ_KLUCZ_WEB3FORMS">
@@ -77,53 +92,58 @@ program pocztowy z gotową treścią (fallback `mailto:`).
 
    i wklej klucz w miejsce `WKLEJ_KLUCZ_WEB3FORMS`.
 
-Darmowy plan Web3Forms to ok. 250 wiadomości/mies. i wystarczy w zupełności.
-Formularz ma ukryte pole-pułapkę (`botcheck`) na boty oraz wymaganą zgodę RODO.
+Darmowy plan Web3Forms to ok. 250 wiadomości/mies. Formularz ma ukryte pole-pułapkę
+(`botcheck`) na boty oraz wymaganą zgodę RODO.
 
-Alternatywy, jeśli kiedyś zabraknie limitu: Formspree, Resend + Cloudflare Pages
-Function, Brevo.
+Alternatywy: Formspree, Resend + Cloudflare Worker, Brevo.
 
-**Test:** po ustawieniu klucza wyślij wiadomość testową na własny adres i sprawdź,
-czy przyszła (także folder spam).
+**Test:** po ustawieniu klucza wyślij wiadomość testową i sprawdź, czy przyszła
+(także folder spam).
 
 ---
 
-## 3. Publikacja na Cloudflare Pages
+## 3. Publikacja na Cloudflare (Workers Builds)
 
-### Wariant A — bez Gita (najprostszy)
+Repo jest już podłączone do Cloudflare. W ekranie **Set up your application** ustaw:
 
-1. Wejdź w panel Cloudflare → **Workers & Pages** → **Create** → **Pages** →
-   **Upload assets**.
-2. Nazwij projekt, np. `mitra`.
-3. Przeciągnij **zawartość tego folderu** (czyli `index.html`, `assets/`, `_headers`,
-   `404.html` — bez `design/` i `README.md`, choć ich obecność niczego nie psuje).
-4. Kliknij **Deploy**. Strona będzie pod `https://mitra.pages.dev`.
+| Pole | Wartość |
+|---|---|
+| **Project name** | `mitra` |
+| **Build command** | `npm ci` |
+| **Deploy command** | `npx wrangler deploy` (domyślne) |
+| **Preview command** | `npx wrangler preview` (domyślne) |
+| **Enable Preview builds** | może zostać włączone (PR-y dostaną własny URL) |
+| **Protect with Cloudflare Access** | wyłączone (strona publiczna) |
 
-Kolejne zmiany: **Create new deployment** i ponownie przeciągnij pliki.
+Kliknij **Deploy**. Pierwszy build zainstaluje Wranglera i opublikuje `public/`.
+Adres roboczy będzie w formie:
 
-### Wariant B — z GitHitem (wygodne aktualizacje)
+```
+https://mitra.<twoj-subdomain>.workers.dev
+```
 
-Repozytorium jest już utworzone i wypchnięte:
-**https://github.com/MarcinCho/mitra** (prywatne, branch `main`).
+Jeśli Cloudflare zapyta o `workers.dev` subdomain — wybierz dowolną wolną nazwę.
 
-1. Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
-2. Zainstaluj **Cloudflare GitHub App** i daj jej dostęp do repozytorium `mitra`
-   (przy prywatnym repo to konieczne).
-3. Wybierz repo `mitra` i branch `main`.
-4. Framework preset: **None**, build command: **puste**, output directory: **`/`**.
-5. **Deploy**. Każdy `git push` publikuje nową wersję, a każdy PR dostaje własny preview.
+Kolejne zmiany: `git push` → Cloudflare buduje i wdraża automatycznie.
+Ustawienia można później zmienić w **Worker `mitra` → Settings → Build**.
 
-Jeśli wolisz, żeby repo było publiczne: GitHub → **Settings → General → Danger Zone →
-Change visibility**. Prywatne repo nie przeszkadza w podłączeniu do Cloudflare.
+### Alternatywa: deploy z terminala
 
-Pliki `_headers`, `_redirects`, `404.html` muszą znaleźć się w katalogu publikowanym.
+```bash
+npm ci
+npx wrangler login
+npx wrangler deploy
+```
+
+To wdraża ten sam Worker `mitra` z Twojego komputera (bez czekania na build).
+Podgląd lokalny: `npm run dev` → `http://localhost:8787`.
 
 ---
 
 ## 4. Domena i poczta (OVH + Cloudflare)
 
-Domena zostaje w OVH, ale **DNS przepisujemy do Cloudflare** — wtedy apex (`mitra.pl`)
-i `www` działają bez kombinowania z CNAME, a SSL jest darmowy.
+Domena zostaje w OVH, ale **DNS przepisujemy do Cloudflare** — wtedy Worker dostaje
+własną domenę i darmowy SSL, a poczta dalej działa przez OVH.
 
 **Zanim zmienisz nameservery:**
 
@@ -141,22 +161,22 @@ i `www` działają bez kombinowania z CNAME, a SSL jest darmowy.
 
 **Poczta:** skrzynka `kontakt@twojadomena.pl` jest w pakiecie darmowego hostingu OVH
 (MX Plan, 5 GB). Jeśli jeszcze jej nie ma — utwórz ją w panelu OVH → **E-mail**.
-Hosting OVH 100 MB nie jest już potrzebny do strony, ale może zostać jako zapas.
+Hosting OVH 100 MB nie jest potrzebny do strony, ale może zostać dla poczty.
 
-**Podłączenie domeny do Pages:**
+**Podłączenie domeny do Workera:**
 
-Cloudflare → **Workers & Pages** → projekt → **Custom domains** → **Set up a domain**
-→ dodaj `twojadomena.pl` oraz `www.twojadomena.pl`. Cloudflare sam utworzy potrzebne
-rekordy, jeśli strefa jest u niego.
+Cloudflare → **Workers & Pages** → Worker `mitra` → **Settings → Domains & Routes**
+→ **Add → Custom domain** → dodaj `twojadomena.pl` oraz `www.twojadomena.pl`.
+Cloudflare sam utworzy rekordy, jeśli strefa jest u niego.
 
-Po włączeniu HTTPS sprawdź, czy `http://` przekierowuje na `https://` (Cloudflare:
-SSL/TLS → **Always Use HTTPS**).
+Po włączeniu HTTPS sprawdź, czy `http://` przekierowuje na `https://`
+(Cloudflare: SSL/TLS → **Always Use HTTPS**).
 
 ---
 
 ## 5. Zdjęcia — jak nie zapchać strony
 
-Strona nie ma już limitu 100 MB, ale rozmiar ma znaczenie dla szybkości.
+Strona jest lekka, ale rozmiar ma znaczenie dla szybkości.
 
 - Produkty: ok. **1200 × 900 px** (4:3), galeria: **900 × 900 px** (1:1).
 - Każde zdjęcie najlepiej **poniżej 200 KB**.
@@ -168,11 +188,11 @@ Strona nie ma już limitu 100 MB, ale rozmiar ma znaczenie dla szybkości.
   from PIL import Image
   im = Image.open('foto.jpg').convert('RGB')
   im.thumbnail((1200, 1200))
-  im.save('produkt-1.jpg', 'JPEG', quality=82, optimize=True, progressive=True)
+  im.save('public/assets/img/produkt-1.jpg', 'JPEG', quality=82, optimize=True, progressive=True)
   "
   ```
 
-Zdjęcia w galerii są przycinane do kwadratu (`object-fit: cover`), więc nie muszą
+Zdjęcia w galerii są przycinane do kwadratu (`background-size: cover`), więc nie muszą
 być idealnie kwadratowe.
 
 ---
@@ -180,12 +200,21 @@ być idealnie kwadratowe.
 ## 6. Podgląd lokalny
 
 ```bash
-cd Mitra
-python3 -m http.server 8080
+npm ci
+npm run dev
 ```
 
-Otwórz `http://localhost:8080`. Formularz z kluczem Web3Forms zadziała też lokalnie
-(API ma CORS), ale bez klucza otworzy tylko `mailto:`.
+Otwórz `http://localhost:8787` — to dokładnie ten sam serwer i routing co na
+Cloudflare (łącznie z `_headers`, `_redirects` i `404.html`).
+
+Alternatywnie zwykły serwer statyczny:
+
+```bash
+python3 -m http.server -d public 8080
+```
+
+Formularz z kluczem Web3Forms zadziała też lokalnie (API ma CORS), a bez klucza
+otworzy `mailto:`.
 
 ---
 
@@ -195,7 +224,7 @@ Otwórz `http://localhost:8080`. Formularz z kluczem Web3Forms zadziała też lo
 - [ ] prawdziwy Instagram / WhatsApp (jeśli dodajesz)
 - [ ] uzupełnione dane administratora w polityce prywatności
 - [ ] realne opisy produktów, pojemności i ceny (albo „cena na zapytanie”)
-- [ ] zdjęcia produktów i galerii w `assets/img/`
+- [ ] zdjęcia produktów i galerii w `public/assets/img/`
 - [ ] klucz Web3Forms + testowa wiadomość
 - [ ] sprawdzony odbiór poczty po zmianie DNS (MX/SPF/DKIM)
 - [ ] `og.jpg` i `canonical` wskazują na docelową domenę
@@ -207,8 +236,8 @@ Otwórz `http://localhost:8080`. Formularz z kluczem Web3Forms zadziała też lo
 
 ## 8. Uwagi prawne
 
-- `polityka-prywatnosci.html` to **szablon**. Uzupełnij dane w nawiasach i skonsultuj
-  z prawnikiem, jeśli sprzedajesz regularnie lub planujesz sklep.
+- `public/polityka-prywatnosci.html` to **szablon**. Uzupełnij dane w nawiasach
+  i skonsultuj z prawnikiem, jeśli sprzedajesz regularnie lub planujesz sklep.
 - Strona nie ustawia cookies analitycznych. Jeśli dodasz analitykę (np. Cloudflare Web
   Analytics jest bezcookiesową opcją), zaktualizuj politykę.
 - Fonty: Cormorant Garamond i Jost — licencja SIL Open Font License, można hostować
@@ -219,6 +248,12 @@ Otwórz `http://localhost:8080`. Formularz z kluczem Web3Forms zadziała też lo
 
 ## 9. Najczęstsze problemy
 
+**Build w Cloudflare się wywala** — sprawdź, czy build command to `npm ci` i czy
+`package-lock.json` jest w repo. Logi: Worker → **Deployments → Build**.
+
+**Po deployu jest 404 na wszystkim** — `wrangler.jsonc` musi wskazywać
+`"directory": "./public"`, a `public/index.html` musi istnieć.
+
 **Formularz otwiera pocztę zamiast wysyłać** — nie wklejony klucz Web3Forms.
 
 **Po zmianie DNS nie przychodzi poczta** — brakuje MX/SPF/DKIM albo są złe priorytety.
@@ -227,17 +262,17 @@ Porównaj z eksportem strefy OVH.
 **Zdjęcie się nie pokazuje** — zła nazwa pliku (`.jpg` vs `.jpeg`) albo format
 (`.webp` przy `src="...jpg"`). Najprościej zapisać jako JPG o właściwej nazwie.
 
-**Strona wygląda staro po podmianie zdjęcia** — cache przeglądarki/CDN. Odśwież z
-`Ctrl+Shift+R`; Cloudflare cache czyści się w panelu (Caching → Purge).
+**Strona wygląda staro po podmianie zdjęcia** — cache przeglądarki. Odśwież z
+`Ctrl+Shift+R`; po nowym deployu Cloudflare i tak podbija wersję assetów.
 
-**Menu mobilne się nie otwiera** — sprawdź, czy `assets/js/main.js` wgrał się na
-serwer i czy nie ma błędu w konsoli.
+**Menu mobilne się nie otwiera** — sprawdź, czy `public/assets/js/main.js` wgrał się
+na serwer i czy nie ma błędu w konsoli.
 
 **W konsoli są błędy 404 dla `produkt-*.jpg` / `galeria-*.jpg`** — to normalne,
 dopóki nie wgrasz zdjęć. Strona pokazuje wtedy rysunki świec (SVG). Po dodaniu
 plików błędy znikną.
 
-**Po edycji przestały działać skrypty / style** — `_headers` ustawia politykę CSP.
-Dodawaj kod w plikach `assets/js/*.js` i `assets/css/*.css`, a nie inline w HTML.
+**Po edycji przestały działać skrypty / style** — `public/_headers` ustawia politykę
+CSP. Dodawaj kod w plikach `assets/js/*.js` i `assets/css/*.css`, a nie inline w HTML.
 Jeśli dodasz zewnętrzną usługę (analityka, mapa), dopisz jej domenę do
 `connect-src` / `img-src` / `script-src` w `_headers`.
