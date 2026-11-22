@@ -103,11 +103,18 @@ Kolejne zmiany: **Create new deployment** i ponownie przeciągnij pliki.
 
 ### Wariant B — z GitHitem (wygodne aktualizacje)
 
-1. Wrzuć folder do repozytorium GitHub.
-2. Cloudflare Pages → **Connect to Git** → wybierz repo.
-3. Framework preset: **None**, build command: **puste**, output directory: **`/`**
-   (albo zostaw domyślną).
-4. Deploy. Każdy `git push` publikuje nową wersję, a każdy PR dostaje własny preview.
+Repozytorium jest już utworzone i wypchnięte:
+**https://github.com/MarcinCho/mitra** (prywatne, branch `main`).
+
+1. Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
+2. Zainstaluj **Cloudflare GitHub App** i daj jej dostęp do repozytorium `mitra`
+   (przy prywatnym repo to konieczne).
+3. Wybierz repo `mitra` i branch `main`.
+4. Framework preset: **None**, build command: **puste**, output directory: **`/`**.
+5. **Deploy**. Każdy `git push` publikuje nową wersję, a każdy PR dostaje własny preview.
+
+Jeśli wolisz, żeby repo było publiczne: GitHub → **Settings → General → Danger Zone →
+Change visibility**. Prywatne repo nie przeszkadza w podłączeniu do Cloudflare.
 
 Pliki `_headers`, `_redirects`, `404.html` muszą znaleźć się w katalogu publikowanym.
 
